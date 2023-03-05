@@ -1,14 +1,67 @@
-import sys
 import random
+import sys
 import string
 
+max_length_of_string=-1
+
 def get_random_string(length):
-    
     # choose from all lowercase letter
     letters = string.ascii_lowercase
     result_str = ''.join(random.choice(letters) for i in range(length))
+    #print("Random string of length", length, "is:", result_str)
 
     return ('"'+result_str+'"')
+
+def generate_nested_string(depth,listofkeys):
+  
+  # get random keys for this level
+  random_list = random.sample(list_of_keys, random.randint(0, len(list_of_keys)))
+
+  if depth == 1:
+
+    string=[]
+    string.append(('['))
+    for lzero in random_list:
+      
+      if lzero[1]=='int':
+        string.append((' "{}" -> {} '.format(lzero[0], random.randint(1, 100))))
+      elif lzero[1]=='float' :
+        string.append((' "{}" -> {} '.format(lzero[0], round(random.uniform(0.1, 99.9),2)) ))
+      elif lzero[1]=='string' :
+        string.append((' "{}" -> {} '.format(lzero[0], get_random_string(random.randint(1,int(max_length_of_string))))))
+    
+      string.append(('|'))
+    string.append((']'))
+
+    string_n=''
+    for s in string:
+      string_n=string_n+s
+
+    string_n=string_n.replace("|]","]")
+    return string_n
+  else:
+    string=[]
+    string.append(('['))
+    for l in random_list:
+      string.append((' "{}" -> {} '.format(l[0], generate_nested_string(depth - 1,listofkeys))))
+      string.append(('|'))
+    string.append((']'))
+
+    string_n=''
+    for s in string:
+      string_n=string_n+s
+    string_n=string_n.replace("|]","]")
+    return string_n
+
+def get_list_of_keys(filename):
+    file1 = open(filename, 'r')
+    Lines = file1.readlines()
+    file1.close()
+    list_of_keys=[]
+    for line in Lines:
+        list_of_keys.append((line.split()))
+    
+    return list_of_keys
 
 def Read_argument():
 
@@ -40,74 +93,32 @@ def Read_argument():
     print('End reading arguments')
     return key_file_name, int(number_of_lines), int(max_level_of_nesting), int(max_number_of_keys), int(max_length_of_string)
 
-def get_list_of_keys(filename):
-    file1 = open(filename, 'r')
-    Lines = file1.readlines()
-    file1.close()
-    list_of_keys=[]
-    for line in Lines:
-        list_of_keys.append((line.split()))
-    
-    return list_of_keys
-
-def get_random_one_list_of_keys(list):
-    print ('LIST ',list)
-    temp=random.randint(0,len(list)-1)
-    return '"'+list[temp][0]+'"',list[temp][1],temp
-
-def find_type(name,list):
-    for i,j in list:
-        if i==name.replace('"',''):
-            return j
-            
-
-if __name__ == "__main__": # python3 genData.py -k keyFile.txt -n 10 -d 3 -l 4 -m 2
+if __name__ == "__main__": # python3 genData.py -k keyFile.txt -n 1000 -d 3 -l 4 -m 5
 
     key_file_name, number_of_lines, max_level_of_nesting, max_number_of_keys, max_length_of_string=Read_argument()
 
     list_of_keys=get_list_of_keys(key_file_name)
     #print(list_of_keys)
 
-    string_line=''
-    parent=''
+    # get random max level
+    random_max_level = random.randint(1,max_level_of_nesting)
+
+    #if max number of keys is higher from list get exactly the the len of list of keys
+    if max_number_of_keys>len(list_of_keys):
+      max_number_of_keys=len(max_number_of_keys)
+
+
     f= open('dataToIndex.txt',"w+")
+
     for i in range(1,number_of_lines+1):
-        #print('line = ',i)
+      #print('random_max_level = ',random_max_level)
 
-        random_max_level = random.randint(1,max_level_of_nesting)
-        #print('max level',random_max_level)
+      nested_string = generate_nested_string(random_max_level,list_of_keys)
 
-        list_of_levels=[]
-        string_line= 'key1 -> []'
-        list_of_levels.append((None,'key1'))
-        temp_list=list_of_levels.copy()
-        for level in range(1,random_max_level+1):
-
-            temp_list=list_of_levels.copy()
-            #print('\nlevel : ',level,temp_list)
-            for val in temp_list:
-                old_parent=val[0]
-                new_parent=val[1]
-                #print('    old parent : ',old_parent,' new parent : ',new_parent,temp_list,'\n')
-                temp2_list=''
-                if int(len(new_parent))==int(level)+3:
-                    temp2_list=temp2_list+'[ '
-                    random_max_key = random.randint(0,max_number_of_keys)
-                    for keys in range(1,random_max_key+1):
-                        #print(new_parent,new_parent+str(keys))
-
-                        temp2_list=temp2_list+ new_parent+str(keys)+' -> []'
-                        if keys!=random_max_key: temp2_list=temp2_list+" | "
-                        list_of_levels.append((str(new_parent),str(new_parent+str(keys))))
-                    
-                    temp2_list=temp2_list+' ]'
-                    if temp2_list=='[  ]':
-                        temp2_list='[]'
-
-                    string_line = string_line.replace(new_parent+' -> []',new_parent+" -> "+temp2_list)
-
-
-        list_string=string_line.split()
-        result_string = ' '.join(list_string)
-        f.write(result_string)
-        f.write('\n')
+      # print the nested string
+      nested_string='"key'+str(i)+'" -> '+nested_string
+      #print('\n',nested_string)
+      
+      f.write(nested_string)
+      f.write('\n')
+    print("The dataset has been created")

@@ -17,9 +17,9 @@ def search(string, keys_list):
     for k in keys_list:
         value = value[k]
     
-    string=str(value).replace(':',' ->').replace('{','[ ').replace('}',' ]').replace(',',' |')
+    string=str(value).replace(':',' ->').replace('{','[ ').replace('}',' ]').replace(',',' |').replace("'",'"')
     
-    return string.replace("'",'"')
+    return string
 
 def checkforquoates(string):
     if not (string.startswith('"') and string.endswith('"')):
@@ -46,6 +46,7 @@ class Trie:
         node.value = value
 
     def delete(self, key):
+        key=checkforquoates(key)
         return self._delete(self.root, key, 0)
 
     def _delete(self, node, key, depth):

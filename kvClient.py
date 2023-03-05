@@ -81,6 +81,7 @@ if __name__ == "__main__":
 
         try:
             s.connect((ip, int(port)))
+            print(port)
             sockets.append(s)
             print('Server: ',ip,':',port,' IS UP!')
         except:
@@ -126,25 +127,31 @@ if __name__ == "__main__":
     while True:
         user_input = input("Enter Question: ")
         part_user_input = user_input.split(" ", 1)
-
         #Check how many server is UP
         number_server_up=0
+        socketsup=[]
+        index=0
         for ip,port in list_of_servers:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
             try:
                 s.connect((ip, int(port)))
+                socketsup.append(index)
                 number_server_up+=1
             except:
                 number_server_up+=0
+            index+=1
         
-        if number_server_up<number_servers_to_index:
-            print('WARNING: ',number_servers_to_index,' or more servers are down and therefore it cannot guarantee the correct output')
+        if number_server_up==0:
+                print('All server are down')
+                break
+        elif number_server_up<number_servers_to_index:
+            print('WARNING: All server are=',len(sockets)-number_servers_to_index+1,' or more servers are down and therefore it cannot guarantee the correct output')
         
         if part_user_input[0]=='GET':
             result=[]
             for i in range(len(sockets)):
-
+                if i not in socketsup: continue
                 sockets[i].send((user_input).encode())
                 data = sockets[i].recv(1024).decode()
                 result.append(data)
@@ -156,10 +163,13 @@ if __name__ == "__main__":
         elif part_user_input[0]=='DELETE':
             result=[]
             for i in range(len(sockets)):
-
-                sockets[i].send((user_input).encode())
-                data = sockets[i].recv(1024).decode()
-                result.append(data)
+                if i not in socketsup: continue
+                try:
+                    sockets[i].send((user_input).encode())
+                    data = sockets[i].recv(1024).decode()
+                    result.append(data)
+                except:
+                    result.append('NOT FOUND')
 
             result = list(set(result))
             if len(result)>1: result.remove('NOT FOUND')
@@ -168,6 +178,7 @@ if __name__ == "__main__":
         elif part_user_input[0]=='QUERY':
             result=[]
             for i in range(len(sockets)):
+                if i not in socketsup: continue
 
                 sockets[i].send((user_input).encode())
                 data = sockets[i].recv(1024).decode()
@@ -191,20 +202,39 @@ if __name__ == "__main__":
             queries=' '.join(part_user_input2[3:]).split(' AND ')
             
             queries = [q.split(' = ') for q in queries]
-            print(queries)
+            #print(queries)
 
+            flag=0
             for var,que in queries:
                 result=[]
                 for i in range(len(sockets)):
+                    if i not in socketsup: continue
 
                     sockets[i].send((que).encode())
                     data = sockets[i].recv(1024).decode()
                     result.append(data)
 
                 result = list(set(result))
-                if len(result)>1: result.remove('NOT FOUND')
+                #print('--',result)
+                if 'NOT FOUND' in result: 
+                    result.remove('NOT FOUND')
+
+                if result==[]:
+                    flag=1
+                    print ('ERROR: ',var,' = ',que,' NOT FOUND')
+                    break
+                elif result[0].isnumeric()==False:
+                    flag=2
+                    print ('ERROR: ',var,' = ',que,' is STRING, can not compute')
+                    break
                 modified_expression=modified_expression.replace(var,result[0])
-            print(eval(modified_expression))
+            
+            if flag!=0:
+                continue
+
+
+            eval_res=eval(modified_expression)
+            print(f"Received Answer: {eval_res}")
         else:
             print('Wrong format of question! Try again')
            
